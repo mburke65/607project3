@@ -1,0 +1,41 @@
+- Profile of a Data Scientist:
+ - A GenderSelect
+ - B Country
+ - C Age
+ - D Employment Status
+ - I CurrentJobTitleSelect
+ - J TitleFit
+ - K CurrentEmployerType
+ - AZ TimeSpentStudying
+ - BA ProzeKnowledgeSelect
+ - BB DatascienceIdentifySelect (All Yes)
+ - BC-BG
+ - BQ-BU Employers 
+ - BW JobFunctionSelect
+ - GX RemoteWork
+ - HE-HT JobFactor
+
+- Learning Platform Usefulness:
+ - O PublicDatasetsSelect
+ - P LearningPlatformSelect
+ - Q-AH Usefulness
+
+- JobSkillImportance:
+ - N LanguageRecommendationSelect
+ - AJ LearningDataScienceTime
+ - AK-AW Job Skill Importance
+
+- Common Job Algorithms:
+ - CA WorkDatasetSize
+ - CB WorkAlgorithmsSelect
+ - EC WorkMethodsSelect
+ - ED-FJ WOrkMethodsFrequency
+
+- Work Tools Frequency:
+ - CC WorkToolsSelect
+ - CD-EB WorkToolFrequency
+
+- Work Challenges: 
+ - FK-FP Time
+ - FR WorkChallengesSelect
+ - FS - GQ WorkChallengeFrequency
