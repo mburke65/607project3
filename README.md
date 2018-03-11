@@ -9,9 +9,9 @@ Group Members:
 6. Brian
 
 Possible Analysis Topics (expanded in groupprojectorganization.txt):
-A. Profile of a Data Scientist
-B. Learning Platform usefulness
-C. JobSkillImportance
-D. Common Job Algorithms
-E. Work Tools Frequency
-F. Work Challenges
+1. Profile of a Data Scientist
+2. Learning Platform usefulness
+3. JobSkillImportance
+4. Common Job Algorithms
+5. Work Tools Frequency
+6. Work Challenges
