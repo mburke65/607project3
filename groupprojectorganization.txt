@@ -1,4 +1,4 @@
-- Profile of a Data Scientist:
+- Profile of a Data Scientist: Justin
  - A GenderSelect
  - B Country
  - C Age
@@ -15,27 +15,27 @@
  - GX RemoteWork
  - HE-HT JobFactor
 
-- Learning Platform Usefulness:
+- Learning Platform Usefulness: Hovig
  - O PublicDatasetsSelect
  - P LearningPlatformSelect
  - Q-AH Usefulness
 
-- JobSkillImportance:
+- JobSkillImportance: Brian
  - N LanguageRecommendationSelect
  - AJ LearningDataScienceTime
  - AK-AW Job Skill Importance
 
-- Common Job Algorithms:
+- Common Job Algorithms: Rose
  - CA WorkDatasetSize
  - CB WorkAlgorithmsSelect
  - EC WorkMethodsSelect
  - ED-FJ WOrkMethodsFrequency
 
-- Work Tools Frequency:
+- Work Tools Frequency: Meaghan
  - CC WorkToolsSelect
  - CD-EB WorkToolFrequency
 
-- Work Challenges: 
+- Work Challenges: Albert 
  - FK-FP Time
  - FR WorkChallengesSelect
  - FS - GQ WorkChallengeFrequency
