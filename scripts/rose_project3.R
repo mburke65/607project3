@@ -4,18 +4,17 @@
 # - EC WorkMethodsSelect
 # - ED-FJ WOrkMethodsFrequency
 
-library(data.table)
-# read in csv file
-raw.data <- fread("./multipleChoiceResponses.csv", verbose=TRUE)
-# adding primary id
-raw.data$id <- seq.int(nrow(raw.data))
+library(readr)
+library(tidyr)
+library(tidyverse)
 
-# library(readr)
-# raw.data <- read_csv("https://raw.githubusercontent.com/brian-cuny/607project3/master/multipleChoiceResponses.csv", na = c('')) %>%
-#   subset(DataScienceIdentitySelect == 'Yes') %>%
-#   rowid_to_column('id')
+raw.data <- read_csv("https://raw.githubusercontent.com/brian-cuny/607project3/master/multipleChoiceResponses.csv", na = c('')) %>%
+  subset(DataScienceIdentitySelect == 'Yes' & CodeWriter == 'Yes') %>%
+  rowid_to_column('id')
 
-# subset data
+raw.data <- as.data.table(raw.data)
+
+# Filter
 data.rose <- raw.data[DataScienceIdentitySelect == 'Yes'][CodeWriter == "Yes"][, .(id, WorkDatasetSize,WorkAlgorithmsSelect,WorkMethodsSelect,
                                            `WorkMethodsFrequencyA/B`,	
                                            WorkMethodsFrequencyAssociationRules,	
@@ -50,8 +49,6 @@ data.rose <- raw.data[DataScienceIdentitySelect == 'Yes'][CodeWriter == "Yes"][,
                                            WorkMethodsFrequencySelect1,
                                            WorkMethodsFrequencySelect2,
                                            WorkMethodsFrequencySelect3)]
-# From work methodsSelect, the answers are
-# "", "Sometimes","Often","Rarely","Most of the time"
 
 # Make long format
 melt.dt <- melt(data.rose, id.vars = c("id","WorkDatasetSize","WorkAlgorithmsSelect","WorkMethodsSelect"),
@@ -65,15 +62,16 @@ alg.select.list <- strsplit(alg.select$WorkAlgorithmsSelect, split = ",")
 alg.select.dt <- data.table(id = rep(alg.select$id, sapply(alg.select.list, length)), 
                             algorithm = unlist(alg.select.list))
 
-# separate as independent tables
+# separate WorkMethodsSelect as independent table
 method.select <- melt.dt[, .(id,WorkMethodsSelect)]
 method.select.list <- strsplit(as.character(method.select$WorkMethodsSelect), split = ",")
 method.select.dt <- data.table(id = rep(method.select$id, sapply(method.select.list, length)), 
                                method = unlist(method.select.list))
 
+# Subset the rest
 freq.dt <- melt.dt[, .(id, WorkDatasetSize,WorkMethodsFrequency,Frequency)]
 
-# final data set
+# final data set sep in 3 tables
 head(freq.dt)
 head(alg.select.dt)
 head(method.select.dt)
