@@ -1,0 +1,113 @@
+---
+title: "project3"
+author: "group1"
+date: "March 16, 2018"
+output:
+  html_document:
+    theme: cerulean
+    hightlight: tango
+    css: styles.css
+---
+
+```{r setup, include=FALSE}
+library(plyr)
+library(tidyverse)
+library(splitstackshape)
+library(magrittr)
+library(knitr)
+```
+
+## Our Project {.tabset}
+
+```{r, warning=FALSE, message=FALSE}
+raw.data <- read_csv('https://raw.githubusercontent.com/brian-cuny/607project3/master/multipleChoiceResponses.csv', na=c('', 'NA')) %>%
+  subset(DataScienceIdentitySelect == 'Yes' & CodeWriter == 'Yes') %>%
+  rowid_to_column('id')
+```
+
+### Profile of a Data Scientist: Justin
+
+
+
+### Learning Platform Usefulness: Hovig
+
+
+
+### Learning Categories: Brian
+
+This subset of data examines how data scientists learned their core skill set. Each data scientist was asked to assign each category a percent from 0 to 100 indicating how much of their education was made up of this source.
+
+First, a list of categories was extrated and formatted.
+
+```{r}
+tidy.names <- names(raw.data)[61:66] %>% 
+  str_extract('(?<=LearningCategory)(\\w+)') %>% 
+  str_replace_all('(?<=[a-z])([A-Z])', '_\\1') %>% 
+  tolower()
+tidy.names %>% kable()
+```
+
+The data was tidied and the categories were converted to factors, to aid in analysis.
+
+```{r}
+tidy.data <- raw.data %>%
+  select(c(1, 61:66)) %>%
+  setNames(c('id', tidy.names)) %>%
+  gather('category', 'percent', 2:7, na.rm=TRUE)
+
+tidy.data$percent %<>% as.numeric()
+
+tidy.data$category %<>% factor(levels=tidy.names, ordered=TRUE)
+tidy.data %>% head(10) %>% kable()
+```
+
+Summary statistics tell an intersting story. No source averaged more than 50% of the sets learning sources. This would seem to indicate that data scientists learn from a diverse set of sources. The 'other' category's mean is nearly 0 also indicating that the other categories account for nearly all learning sources. 
+
+```{r}
+tidy.summary.data <- tidy.data %>% 
+  group_by(category) %>% 
+  summarise(avg=mean(percent), sd=sd(percent))
+tidy.summary.data %>% kable()
+```
+
+The boxplots support the summary statistics. Each category has numerous upper ourliers indicating that data scientists who learned most or entirely from one source were rare.
+
+```{r}
+ggplot(tidy.data) +
+  geom_boxplot(aes(category, percent)) +
+  xlim(tidy.names %>% rev()) +
+  coord_flip() + 
+  labs(x='Learning Source', 
+       y='Proportion',
+       title='Data Scientists Learn From Diverse Sources'
+  )
+```
+
+The final more clearly shows the diversity in learning styles. This indicates that not only do data scientists learn from a variety of sources, but every data scientist's sources vary in importance. This highlights the idea that there is not right or wrong way to learn to become a data scientist. At the same time, as the four major categories amount for nearly 100% of education, this means that there are no "secret" learning sources.
+
+```{r}
+ggplot(tidy.data) +
+  geom_bar(aes(category, fill=percent %>% 
+                                round_any(10) %>% 
+                                factor(seq(0, 100, 10))
+              ), position=position_fill(reverse=TRUE)
+          ) +
+  scale_color_brewer(palette='Set1') + 
+  theme(axis.text.x=element_text(angle=45, hjust=1)) +
+  labs(x='Learning Source', 
+       y='Proportion',
+       title='Data Scientists Learn From Diverse Sources',
+       fill='Percent'
+  )
+```
+
+### Common Job Algorithms: Rose
+
+
+### Work Tools Freqeuncy: Meaghan
+
+
+### Work Challenges: Albert
+
+
+### Conclusion (writing to csv/importing to sql?)
