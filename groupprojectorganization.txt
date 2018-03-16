@@ -13,7 +13,9 @@
  - BQ-BU Employers 
  - BW JobFunctionSelect
  - GX RemoteWork
- - HE-HT JobFactor
+ - CompensationAmount
+ - CompenstaionCurrency
+ - Tenure
 
 - Learning Platform Usefulness: Hovig
  - O PublicDatasetsSelect
