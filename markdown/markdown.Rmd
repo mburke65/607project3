@@ -103,11 +103,193 @@ ggplot(tidy.data) +
 
 ### Common Job Algorithms: Rose
 
+This subset of data examines common algorithms and methods used by data scientists.
+
+First, the proper data is subset.
+
+```{r}
+data.rose <- raw.data %>%
+  select(c(1, 80:81, 134:167))
+
+tidy.names <- c(names(data.rose)[1:4], 
+                names(data.rose)[5:37] %>% 
+                  str_extract('(?<=WorkMethodsFrequency)(.+)')
+                )
+
+melt.dt <- data.rose %>%
+  setNames(tidy.names) %>%
+  gather('WorkMethodsFrequency', 'Frequency', 5:37)
+melt.dt %>% head(10) %>% kable()
+```
+
+The data on commonly used algorithms was seperated into it's own table.
+
+```{r}
+alg.select <- melt.dt %>%
+  select(c('id', 'WorkAlgorithmsSelect'))
+alg.select.list <- alg.select$WorkAlgorithmsSelect %>%
+  strsplit(split = ",")
+alg.select.dt <- tibble(id = rep(alg.select$id, sapply(alg.select.list, length)), 
+                            algorithm = unlist(alg.select.list))
+alg.select.dt %>% head(10) %>% kable()
+```
+
+The data on commonly used method was seperated into it's own table.
+
+```{r}
+method.select <- melt.dt %>%
+  select(c('id', 'WorkMethodsSelect'))
+method.select.list <- method.select$WorkMethodsSelect %>%
+  as.character() %>% 
+  strsplit(split = ",")
+method.select.dt <- tibble(id = rep(method.select$id, sapply(method.select.list, length)), 
+                               method = unlist(method.select.list))
+method.select.dt %>% head(10) %>% kable()
+```
+
+Finally, the data on fequency of each method was seperated into it's own table.
+
+```{r}
+freq.dt <- melt.dt %>%
+  select(c('id', 'WorkDatasetSize', 'WorkMethodsFrequency', 'Frequency'))
+freq.dt %>% head(10) %>% kable()
+```
+
+ANALYSIS
 
 ### Work Tools Freqeuncy: Meaghan
+
+The data was very untidy and expanded into two columns passed the "WorkToolsSelect" column. I brought in the 3 columns and replaced elements to ensure a easy split 
+
+```{r message=FALSE, warning=FALSE}
+tidy.names <- names(raw.data)[83:132]%>% 
+  str_extract('(?<=WorkToolsFrequency)(\\w+)') %>% 
+  str_replace_all('(?<=[a-z])([A-Z])', '_\\1') 
+
+tools.data <- raw.data %>%
+  select(c(1, 82:84)) %>%
+  setNames(c('id', 'tool_used', "temp_1", "temp_2"))%>%
+  unite_("tool_used", c("tool_used","temp_1","temp_2"))%>%
+  mutate(tool_used = (str_replace_all(tool_used, '/', ',')),
+         tool_used = (str_replace_all(tool_used, '_', ',')))%>%
+  mutate(tool_counter =1)
+tools.data <- cSplit(tools.data, 'tool_used', ',')
+```
+
+I used the gather function to reformat the table
+
+```{r message=FALSE, warning=FALSE}
+id.tool.df <- tools.data %>%
+  gather(tool_group, tool, names(tools.data)[3:63])%>%
+  group_by(id, tool)%>%
+  summarise(sum_tool = sum(tool_counter))%>%
+  drop_na()%>%
+  filter(!tool %in% c("Rarely", "Often",
+                      "Sometimes", "Most of the time"))
+id.tool.df %>% head(10) %>% kable()
+```
+
+I created a summary table representing the frequency of each response.
+
+```{r message=FALSE, warning=FALSE}
+summary.tool.df <- tools.data %>%
+  gather(tool_group, tool, names(tools.data)[3:63])%>%
+  group_by(tool)%>%
+  summarise(sum_tool = sum(tool_counter))%>%
+  drop_na()%>%
+  arrange(desc(sum_tool))%>%
+  filter(!tool %in% c("Rarely", "Often",
+                      "Sometimes", "Most of the time"))%>%
+  mutate(percent_total = round((sum_tool/ sum(sum_tool))*100,digits = 2))
+summary.tool.df %>% head(10) %>% kable()
+```
+
+This plot shows the top data science skills given the filters used.
+
+```{r }
+ggplot(head(summary.tool.df,15), aes(x=reorder(tool, -sum_tool), y=percent_total)) + 
+  geom_bar(stat="identity", width=.5, fill="tomato3") +
+  geom_text(aes(label=percent_total))+
+  labs(x='Tool', 
+       y='Percent Total',
+       title="Top 15 Data Science Tools", 
+       caption="Source: Multiple Choice Responses") + 
+  theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+A data frame of tool frequency by id was created.
+
+```{r}
+frequency.data <- raw.data %>%
+  select(c(1, 83:132)) %>%
+  setNames(c('id', tidy.names))
+
+id.frquency.table <-frequency.data %>% 
+  gather(tool_name, frequency_id, names(frequency.data)[2:51])%>%
+  filter(frequency_id %in% c("Rarely", "Often",
+                             "Sometimes", "Most of the time"))%>%
+  arrange(id)
+id.frquency.table %>% head(10) %>% kable()
+```
+
+I grouped the frequency information by the actual tool name & response 
+
+```{r}
+summary.frquency.table <- frequency.data %>% 
+  gather(tool_name, frequency_id, names(frequency.data)[2:51])%>%
+  filter(frequency_id %in% c("Rarely", "Often",
+                             "Sometimes", "Most of the time"))%>%
+  mutate(freq_counter =1) %>%
+  group_by(tool_name,frequency_id)%>%
+  summarise(sum_feq = sum(freq_counter))%>%
+  arrange(desc(sum_feq))
+summary.frquency.table %>% head(10) %>% kable()
+```
+
+The plot shows frequency of use of top technologies.
+
+```{r}
+ordering <- c('Most of the time', 'Often', 'Sometimes', 'Rarely')
+
+ggplot(head(summary.frquency.table,50), aes(x = frequency_id, y = sum_feq, fill = tool_name)) + 
+  geom_bar(stat = "identity") + 
+  facet_wrap(~tool_name) + 
+  ylab("Number of times a response was selected") + 
+  xlim(ordering) +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   vjust = 0.5, 
+                                   hjust = 1))
+```
+
 
 
 ### Work Challenges: Albert
 
 
 ### Conclusion (writing to csv/importing to sql?)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
