@@ -1,0 +1,666 @@
+---
+title: "Justin_herman"
+author: "Justin Herman"
+date: "March 16, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, messages= FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(rlang)
+library(gridExtra)
+library(stringr)
+```
+
+## Functions
+
++ I wanted to avoid using the two functions directly, but it made life really easy specifically Choosemultiple
++ I can't contact her on kaggle becuase I am not a contributor, if someone is can they can send her a message?
++ [kaggel contact info](https://www.kaggle.com/amberthomas/contact)
+
+```{r}
+
+
+
+
+## Takes a column and creates summary without nulls containing N sum and proportions
+chooseOne = function(question){
+    exp_df %>%
+        filter(!UQ(sym(question)) == "") %>% 
+        dplyr::group_by_(question) %>% 
+    # Count how many respondents selected each option
+        dplyr::summarise(count = n()) %>% 
+    # Calculate what percent of respondents selected each option
+        dplyr::mutate(percent = (count / sum(count)) * 100) %>% 
+    # Arrange the counts in descending order
+        dplyr::arrange(desc(count)) 
+}
+
+## Same as Choose one except works for answers where user could choose multiple answers per question
+chooseMultiple = function(question,df){
+
+  df %>% 
+    # Remove any rows where the respondent didn't answer the question
+    dplyr::filter(!UQ(sym(question)) == "") %>%
+    # Remove all columns except question
+    dplyr::select(question) %>% 
+    # Add a column with the initial number of respondents to question
+    dplyr::mutate(totalCount = n()) %>% 
+    # Split multiple answers apart at the comma, but ignore commas inside parentheses
+    dplyr::mutate(selections = strsplit(as.character(UQ(sym(question))), 
+                                 '\\([^)]+,(*SKIP)(*FAIL)|,\\s*', perl = TRUE)) %>%
+    # Split answers are now nested, need to unnest them
+    unnest(selections) %>% 
+    # Group by the selected responses to the question
+    dplyr::group_by(selections) %>% 
+   # Count how many respondents selected each option
+    dplyr::summarise(totalCount = max(totalCount),
+              count = n()) %>% 
+    # Calculate what percent of respondents selected each option
+    dplyr::mutate(percent = (count / totalCount) * 100) %>% 
+    # Arrange the counts in descending order
+    dplyr::arrange(desc(count))
+}        
+
+
+## Slight modification to choosone,
+Academic_exploration=function(question,df){
+     df %>%
+        filter(!UQ(sym(question)) == "") %>% 
+        dplyr::group_by_(question) %>% 
+    # Count how many respondents selected each option
+        dplyr::summarise(count = n()) %>% 
+    # Calculate what percent of respondents selected each option
+        dplyr::mutate(percent = (count / sum(count)) * 100) %>% 
+    # Arrange the counts in descending order
+        dplyr::arrange(desc(count)) 
+}
+
+
+
+## Takes a vector and creates a percantage column
+proportion_function <- function(vec){
+    vec/sum(vec)*100
+}
+
+##Creates intervals for column data, that matches intervals to foreign data intervals 
+
+create_breaks <- function(dfcolumn,breaks,labels)
+    {
+    dfcolumn <- as.numeric(dfcolumn)
+    dfcolumn <- cut(dfcolumn,breaks=breaks,labels=labels,right=FALSE)
+    }
+
+
+##Failed funnction
+#identity_plots_45 <- function(df,x,y,fill){ggplot(df, aes(x = var(x),y=var(y), fill = var(fill))) + 
+ #     geom_bar(stat="identity")+
+#}
+```
+
+## Load in data and create summaries for all the columns with functional
+```{r pressure, echo=FALSE}
+raw.data <- read_csv('C:/Users/justin/Documents/GitHub/607project3/multipleChoiceResponses.csv', na=c('')) %>%
+  subset(DataScienceIdentitySelect == 'Yes' & CodeWriter == 'Yes') %>%
+  rowid_to_column('id') 
+exp_df <- raw.data%>%
+    select(c(1:5,10,11,59,12,56,57,58,60,70,71,72,73,74,75,76,207,208,209)) 
+exp_df <- as_data_frame(exp_df)  
+
+## Data exploration-Preview Column summaries
+#my_names <- colnames(exp_df)
+#lapply(my_names,function(x)chooseOne(x))
+#colnames(exp_df)
+
+##TimeSpentStudying didnt load,ProveKnowledgeSelect
+raw.data[,c(53,54)]
+```
+
+## How did you first learn machine learning
+```{r,echo=FALSE}
+FirstTrained <- chooseOne("FirstTrainingSelect")
+FirstTrained
+FirstTrained$FirstTrainingSelect <- factor(FirstTrained$FirstTrainingSelect, levels = FirstTrained$FirstTrainingSelect)
+
+ggplot(FirstTrained, aes(x = FirstTrainingSelect,y=percent, fill = FirstTrainingSelect)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+    coord_flip()
+```
+
+## Takeaway
++ Only 8% of data scientists went into their job with no knowledge of Machine Learning
++ Over 50% of data scientists learned by themselves or through online courses
++ Over 34% of data scientists first learned ML through university
+
+
+
+## How important is university?
+```{r,echo=FALSE}
+Importance <- chooseOne('UniversityImportance')
+Importance <- Importance %>% 
+    filter(UniversityImportance %in% c(c("Very important","Important","Somewhat important","Not very important","Not at all important" )))
+Importance$UniversityImportance <- factor(Importance$UniversityImportance, levels = Importance$UniversityImportance)
+ggplot(Importance, aes(x = UniversityImportance,y=percent, fill = UniversityImportance)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")
+
+```
+
+
+## Takeaways
++ less than 10% of data scientists feel Advanced degrees are unimportant
+
+## Education data
+
+```{r,echo=FALSE}
+education <- chooseOne('FormalEducation')
+other_count <- sum(education[4:7,]$count)
+other_percent <- sum(education[4:7,]$percent)
+Other <- c("Other",other_count,other_percent)
+
+#Combine other degrees into other category becuase I will show comparable data with those categories to validate our dataset
+education <- education %>% 
+    filter(FormalEducation%in% c("Master's degree","Doctoral degree","Bachelor's degree")) %>% 
+    rbind(.,Other)  
+education[,2:3] <- sapply(education[,2:3], as.numeric) 
+ggplot(education, aes(x = FormalEducation,y=percent, fill = FormalEducation)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")
+```
+
+# Below Image taken from Burtchwood Study on Data Scientists   
+
+![Burtchwood Study on Data Scientists](C:/Users/justin/Documents/GitHub/607project3/scripts/burthworks study_education_levels.PNG)
+
+
+## Takeaways
++ over 70% of data scientists have at least a masters degree!!
+
+## Display by Major 
+ 
+```{r,echo=FALSE}
+##Majors
+majors <- chooseOne('MajorSelect') %>% 
+  arrange(.,desc(percent))
+majors[7,1] <- c("IT")
+majors$MajorSelect <- factor(majors$MajorSelect, levels = majors$MajorSelect)
+ggplot(majors, aes(x = MajorSelect,y=percent, fill = MajorSelect)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+      coord_flip()
+```
+
+## Takeaways
+
++ Computer Science leads the field with over 30%
+
++ Close behind is math and stat followed by Electrical engineering
+
++ About 6.5% of data scientists come from social science backgrounds
+
+## What are the Gender and Age demographics
+
+```{r,echo=FALSE}
+
+## Gender Data
+our_gender_data <- chooseOne('GenderSelect')
+our_gender_data <-  our_gender_data %>% 
+    select(GenderSelect,percent) 
+our_gender_data[c(3,4),1]=c("other","Non-binary")
+our_gender_data
+ggplot(our_gender_data, aes(x = GenderSelect,y=percent, fill = GenderSelect)) +
+  geom_bar(stat="identity")  
+
+
+
+```
+
+## For comparison Burthwoods gender 
+![Burtchwood Study on Data Scientists](C:/Users/justin/Documents/GitHub/607project3/scripts/burthworks study_gender_demographics.PNG)
+
++ "By maintaining such strong relationships with candidates and clients, Burtch Works has the unique opportunity to examine hiring and compensation trends over time, and publishes several highly-anticipated studies each year that investigate demographic and compensation data for predictive analytics, marketing research, and data science professionals. The Burtch Works Studies provide an exceptional vantage point on compensation for these professionals across the country, and contain critical information both for individuals mapping their career strategy, and for hiring managers hoping to recruit and retain outstanding personnel to their teams."
+
+```{r,echo=FALSE}
+## hybrid age and gender display
+chooseOne('GenderSelect')
+ageGender <- exp_df %>% 
+  group_by(GenderSelect, FormalEducation) %>%
+  filter(!GenderSelect == "") %>% 
+  filter(!FormalEducation == "") %>% 
+  dplyr::summarise(count = n())
+
+
+
+##   Age data
+# Create age groups
+our_age<- create_breaks(exp_df$Age,c(1,22.1, 28.1,35.1,41.1,49.1,56.1,Inf ),c("18-22", "23-30", "31-38", "39-46 ", "47-54 ", "55-62","62+"))
+exp_df["age_groups"] <-our_age 
+chosen_age <- chooseOne('age_groups')
+    
+chosen_age <- chosen_age %>% 
+    arrange(.,age_groups)
+##plot age data
+ggplot(exp_df, aes(x = GenderSelect, fill = age_groups)) + 
+  geom_bar()  
+
+ggplot(chosen_age, aes(x = age_groups,y=percent, fill = age_groups)) + 
+  geom_bar(stat="identity")  
+
+ggplot(chosen_age, aes(x = age_groups,y=count, fill = age_groups)) +
+  geom_bar(stat="identity")
+```
+
+
+
+
+## Takeaways
++ Only about 18% of data scientists are over 47 years old
++ There are as many 18-22 year old as there are 62+
++ 23-38 encompasses nearly 60% of the field
++ There is an enormous gender bias in the composition of Males/Females with males outnumbering females at nearly 4-1
+
+   
+
+
+## Explore how long Employees have been in the data science field
+```{r,echo=FALSE}
+
+
+burtchworks_tenure <- (c('0-5'=150,'6-10'=120,'11-15'=75,"16-20"=25,"21-25"=22,"26-30"=2,"31+"=1))
+
+percent_Burtch_works <- proportion_function(burtchworks_tenure) 
+names(percent_Burtch_works) <- c("percent")
+burtchworks_tenure_df <- as_data_frame(cbind(burtchworks_tenure,percent_Burtch_works))
+burtchworks_tenure_df$tenure <- c('0-5','6-10','11-15',"16-20","21-25","26-30","31+")
+
+
+burtchworks_tenure_df$Tenures <- factor(burtchworks_tenure_df$tenure, levels = burtchworks_tenure_df$tenure)
+ggplot(burtchworks_tenure_df,aes(x=Tenures,y=percent_Burtch_works,fill=Tenures))+
+  geom_bar(stat='identity')+
+  theme(legend.position="none")
+
+
+##Our dataset Tenure
+my_tenure <- chooseOne("Tenure")
+
+my_tenure$Tenure=c("3-5 Years","10+ Years","1-2 Years","6-10 Years", "< 1 Year", "Doesn't write code")
+my_tenure$Tenures <- factor(my_tenure$Tenure, levels = my_tenure$Tenure)
+
+ggplot(my_tenure, aes(x = Tenures,y=percent, fill = Tenures)) + 
+      geom_bar(stat="identity")+
+      scale_x_discrete("Tenures", limits=c( "< 1 Year","1-2 Years","3-5 Years","6-10 Years","10+ Years", "Doesn't write code"))
+      theme(legend.position="none")
+
+
+
+## create intervals for comparison in both data sets
+#berchwood
+percent_burchwood_tenure<- sum(as.numeric(burtchworks_tenure_df[3:7,]$percent_Burtch_works))
+burchwood_tenure_N <-  sum(as.numeric(burtchworks_tenure_df[3:7,]$burtchworks_tenure))
+extra_row <- c(burchwood_tenure_N,percent_burchwood_tenure," 10 + Years")
+
+burtchworks_tenure_comparison_df <- burtchworks_tenure_df %>% 
+    filter(tenure %in% c("0-5","6-10")) %>% 
+    select(-Tenures) %>% 
+    rbind(.,extra_row)  
+
+burtchworks_tenure_comparison_df[,1:2] <- sapply(burtchworks_tenure_comparison_df[,1:2], as.numeric)
+
+burtchworks_tenure_comparison_df$tenure <- factor(burtchworks_tenure_comparison_df$tenure, levels = burtchworks_tenure_comparison_df$tenure)
+
+
+burtchworks_tenure_comparison_df
+
+#our dataset
+one_to_five <- c("0-5",sum(my_tenure[c(1,3,5),]$percent))
+our_data_set_tenure_grouped <- rbind(one_to_five,my_tenure[4,c(1,3)],my_tenure[2,c(1,3)])
+
+
+
+plot_1 <- ggplot(burtchworks_tenure_comparison_df, aes(x = tenure,y=percent_Burtch_works, fill = tenure)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+      xlab("BurtchWorks tenure data")
+plot_2 <- ggplot(our_data_set_tenure_grouped, aes(x = Tenure,y=percent, fill = Tenure)) + 
+      geom_bar(stat="identity")+
+      scale_x_discrete("Tenure", limits=c( "0-5","6-10 Years","10+ Years"))+
+      theme(legend.position="none")+
+      xlab("Our tenure data")
+ grid.arrange(plot_1,plot_2)     
+      
+
+```
+
+## Comparing the datasets 
++ Our dataset seems to have less experience than the BurtchWorks
++ We  should note that observations may be somewhat influenced by a younger grouping of Data scientists  
+
+## Explore Employment Status and see how it effects remote login statistics
+```{r,echo=FALSE}
+chooseOne('EmploymentStatus')
+Employment_Remote_Work <- exp_df %>%
+    filter(EmploymentStatus%in%c("Employed full-time"))
+work_remotely_func <- function(Employment_Remote_Work,employment_status){
+    work_remotely <- Academic_exploration("RemoteWork",Employment_Remote_Work)
+    work_remotely <- work_remotely %>% 
+        filter(RemoteWork %in%c("Sometimes", "Rarely", "Never", "Most of the time", "Always", "Git"))
+    work_remotely$RemoteWork<- factor(work_remotely$RemoteWork, levels=work_remotely$RemoteWork)
+    ggplot(work_remotely, aes(x = RemoteWork,y=percent, fill = RemoteWork)) + 
+        geom_bar(stat="identity")+
+        theme(legend.position="none")+
+        labs(x=employment_status)
+}
+
+
+
+
+Employment_Remote_Work <- exp_df %>%
+    filter(EmploymentStatus%in%c("Employed full-time"))
+remotely_graph_1 <- work_remotely_func(Employment_Remote_Work,"Employed full-time")
+Employment_Remote_Work <- exp_df %>%
+    filter(EmploymentStatus%in%c("Independent contractor, freelancer, or self-employed"))
+remotely_graph_2 <-work_remotely_func(Employment_Remote_Work,"Independent contractor, freelancer, or self-employed")
+Employment_Remote_Work <- exp_df %>%
+    filter(EmploymentStatus%in%c("Employed part-time"))
+remotely_graph_3 <-work_remotely_func(Employment_Remote_Work,"Employed part-time")
+
+grid.arrange(remotely_graph_1,remotely_graph_2,remotely_graph_3, top="Data scientists working remotely by employment status")
+
+```
+
+
+## Takeaways
++ Unsurprisingly people working independently seem to work remotely w over 50% of those employed this way always working remotely
++ Full time employees don't work remotely all that much.   Over 35% of them Rarely work remotely, and very few almost always work remotely
++ Part time employees seem pretty evenly split
+
+## Employer catagories
+```{r,echo=FALSE}
+# EmployerIndustry- which industry are you in
+# EmployerSize-size
+# EmployerSizeChange-change in size
+# EmployerMLTime- how many years has your company been deploying ML
+# EmployerSearchMethod- how did you dfind your job
+employ <- names(exp_df[,10:16])
+lapply(employ,function(x)chooseOne(x))
+
+
+
+## First create graph of industry wide employment
+EmployerIndustries <- chooseOne("EmployerIndustry") 
+EmployerIndustries$EmployerIndustry<- factor(EmployerIndustries$EmployerIndustry, levels=EmployerIndustries$EmployerIndustry)
+EmployerIndustries %>% 
+    filter(EmployerIndustry%in%c("Academic", "Technology", "Financial", "Other", "Mix of fields", "Internet-based", "Government", "Manufacturing", "CRM/Marketing", "Insurance", "Retail", "Pharmaceutical", "Non-profit", "Military/Security", "Hospitality/Entertainment/Sports")) %>% 
+ggplot(., aes(x = EmployerIndustry,y=percent, fill = EmployerIndustry)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+    coord_flip()
+
+```
+
+
+
+## Use top employment industries (Academic Financial Government Technology)
+
+## Create function to map a grid of our subsetted data
+```{r}
+### Someone get me a function here to create factor of 1st column!!!
+### Also one for ggplot if possible?
+
+
+
+
+## Explore subset but first create function 
+explore_data_science <- function(field,academic_indus){
+Academic_Size <- Academic_exploration("EmployerSize",Academic_indus)
+Academic_Size$EmployerSize<- factor(Academic_Size$EmployerSize, levels=Academic_Size$EmployerSize)
+
+Academic_SizeChange <- Academic_exploration("EmployerSizeChange",Academic_indus)
+Academic_SizeChange$EmployerSizeChange<- factor(Academic_SizeChange$EmployerSizeChange, levels=Academic_SizeChange$EmployerSizeChange)
+
+Academic_MLTime <- Academic_exploration("EmployerMLTime",Academic_indus)
+Academic_MLTime$EmployerMLTime<- factor(Academic_MLTime$EmployerMLTime, levels=Academic_MLTime$EmployerMLTime)
+
+Academic_SearchMethod <- Academic_exploration("EmployerSearchMethod",Academic_indus)
+Academic_SearchMethod[,1]= c("friend/Family", "Internal Recruiter", "Other Way", "Thru Website", "General Job Board", "Career Fair", "Tech Job board", "Headhunter")
+Academic_SearchMethod$EmployerSearchMethod<- factor(Academic_SearchMethod$EmployerSearchMethod, levels=Academic_SearchMethod$EmployerSearchMethod)
+
+plot_1 <- ggplot(Academic_Size, aes(x = EmployerSize,y=percent, fill = EmployerSize)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+    coord_flip()
+plot_2 <- ggplot(Academic_SizeChange, aes(x = EmployerSizeChange,y=percent, fill = EmployerSizeChange)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+    coord_flip()
+plot_3 <- ggplot(Academic_MLTime, aes(x = EmployerMLTime,y=percent, fill = EmployerMLTime)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+    coord_flip()
+plot_4 <- ggplot(Academic_SearchMethod, aes(x = EmployerSearchMethod,y=percent, fill = EmployerSearchMethod)) + 
+      geom_bar(stat="identity")+
+      theme(legend.position="none")+
+      coord_flip()
+
+   
+ grid.arrange(plot_1,plot_2,plot_3,plot_4, top=paste("Data scientists employed in",field))
+
+ 
+}
+```
+## Now we can Explore all the Major Data science employment fields
+
+```{r}
+Academic_indus <- exp_df %>%
+    filter(EmployerIndustry%in%c("Academic"))
+explore_data_science("Academic",Academic_indus)
+
+
+Academic_indus <- exp_df %>%
+    filter(EmployerIndustry%in%c("Technology"))
+explore_data_science("Technology",Academic_indus)
+
+Academic_indus <- exp_df %>%
+    filter(EmployerIndustry%in%c("Financial"))
+explore_data_science("Financial",Academic_indus)
+
+Academic_indus <- exp_df %>%
+    filter(EmployerIndustry%in%c("Government"))
+explore_data_science("Government",Academic_indus)
+
+```
+
+
+## Create function to look at current job trends by current job titles
+```{r}
+current_jobs <- c("CurrentJobTitleSelect", "TitleFit", "PastJobTitlesSelect", "CurrentEmployerType")
+##View categories
+lapply(current_jobs,function(x)chooseOne(x))
+
+## Create function to explore =("TitleFit","PastJobTitlesSelect","CurrentEmployerType") for current types of job positions
+
+explore_current_job<- function(current_job,field){
+#Load in df and column choice
+    #Academic_Size <- Academic_exploration(field,current_job)
+
+#create data for ("TitleFit","PastJobTitlesSelect","CurrentEmployerType")  
+#"TitleFit
+    current_job_TitleFit <- Academic_exploration("TitleFit",current_job)
+    current_job_TitleFit$TitleFit<- factor( current_job_TitleFit$TitleFit, levels= current_job_TitleFit$TitleFit)
+#"PastJobTitlesSelect 
+    current_job_PastJob <- chooseMultiple("PastJobTitlesSelect",current_job)
+    current_job_PastJob <- current_job_PastJob[1:7,]
+    current_job_PastJob$selections<- factor( current_job_PastJob$selections, levels= current_job_PastJob$selections)
+#"CurrentEmployerType"    
+    current_job_CurrentEmployer<- chooseMultiple("CurrentEmployerType",current_job)
+    #current_job_CurrentEmployer <- current_job_CurrentEmployer[1:8,]
+    current_job_CurrentEmployer$selections<- factor( current_job_CurrentEmployer$selections, levels= current_job_CurrentEmployer$selections)
+
+       
+#Plots    
+
+    plot_1 <- ggplot(current_job_TitleFit, aes(x = TitleFit,y=percent, fill = TitleFit)) + 
+        geom_bar(stat="identity")+
+        theme(legend.position="none")+
+        xlab("Job Fit")
+    
+    plot_2 <-ggplot(current_job_PastJob, aes(x = selections,y=percent, fill = selections)) + 
+        geom_bar(stat="identity")+
+        theme(legend.position="none")+
+        xlab("Past Job Title")+
+        coord_flip()
+    
+    plot_3 <-ggplot(current_job_CurrentEmployer, aes(x = selections,y=percent, fill = selections)) + 
+        geom_bar(stat="identity")+
+        theme(legend.position="none")+
+        xlab("Current Employer")+
+        coord_flip()
+    grid.arrange(plot_1,plot_2,plot_3,top=paste("Data scientists with current job title",field))
+}
+
+
+
+
+
+
+
+```
+
+
+## Look at current job trends by current job titles
+```{r}
+
+current_job <- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Scientist/Researcher"))
+explore_current_job(current_job,"Scientist/Researcher")
+
+current_job <- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Data Analyst"))
+explore_current_job(current_job,"Data Analyst")
+
+current_job<- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Machine Learning Engineer"))
+explore_current_job(current_job,"Machine Learning Engineer")
+
+current_job<- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Software Developer/Software Engineer"))
+explore_current_job(current_job,"Software Developer/Software Engineer")
+
+current_job <- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Business Analyst"))
+explore_current_job(current_job,"Business Analyst")
+
+current_job <- exp_df %>%
+    filter(CurrentJobTitleSelect%in%c("Statistician"))
+explore_current_job(current_job,"Statistician")
+
+
+
+```
+
+### CompensationAmount
+```{r}
+
+US_only_df <- exp_df %>% 
+    filter(Country%in%c('United States'))
+    
+str(US_only_df)
+US_only_df$CompensationAmount <- str_replace_all(US_only_df$CompensationAmount,"\\D+","") 
+
+us_money <- Academic_exploration("CompensationAmount",US_only_df)
+us_money
+my_dat <- create_breaks(us_money$CompensationAmount,breaks=c(0,30000,70000,11000,150000,Inf),labels=c('<30k','30-70k',"70-110k","110-150k","150k+"))
+us_money$groups <- my_dat
+
+
+ggplot(us_money, aes(x = groups,y=percent, fill = groups)) + 
+        geom_bar(stat="identity")+
+        theme(legend.position="none")+
+        xlab("Current Employer")+
+        scale_x_discrete("groups", limits=c('<30k','30-70k',"70-110k","110-150k","150k+"))
+       
+```
+
+
+
+
+## Likely useless commented out data that i misinterpreted
+```{r}
+
+
+
+##Gender
+# gender_1 <- c(males=163,females=40)
+# gender_2 <- c(males=152,females=51)
+# proportion_function(gender_1)
+# proportion_function(gender_2)
+
+
+# ##AGE
+# proportion_function(average_age_1) 
+# proportion_function(average_age_2)
+# average_age_1 <-c("0-18"=54,111,145,129,92,75,55)
+# average_age_2 <-c("0-18"=58,106,137,136,92,76,56)
+
+##Education
+
+# education_1 <- c(45,104,260)
+# education_2 <- c(46,110,240)
+# education_1 <- c("no_college"=45, "college"=104, "grad school"=260)
+# education_2 <- c("no_college"=46, "college"=110, "grad school"=240)
+# 
+##Salary
+# 92.798
+# salary_1 <- c(65,110,166,179)
+# salary_2 <- c(62,111,170,192)
+
+
+# identity_plots_45(majors,x='MajorSelect',y='percent',fill='MajorSelect')
+
+
+
+##4th graph job fucntions coudlnt get it in
+    
+#Jobfunctionsselct
+#    current_job_JobFunction<- Academic_exploration("JobFunctionSelect",current_job)
+#    current_job_JobFunction <- current_job_JobFunction %>% 
+ #       filter(JobFunctionSelect%in%c("Build prototypes to explore applying machine learning to new areas","Analyze and understand data to #influence product or business decisions","Research that advances the state of the art of machine learning",
+#  "Build and/or run the data infrastructure that your business uses for storing, analyzing, and operationalizing data",
+#  "Build and/or run a machine learning service that operationally improves your product or workflows",NA,"Other"))
+        
+ #   current_job_JobFunction <- current_job_JobFunction[1:8,]
+ #   current_job_JobFunction$JobFunctionSelect<- factor( current_job_JobFunction$JobFunctionSelect, levels= #current_job_JobFunction$JobFunctionSelect)
+   # plot_4 <-ggplot(current_job_JobFunction, aes(x = JobFunctionSelect,y=percent, fill = JobFunctionSelect)) + 
+#        geom_bar(stat="identity")+
+#        theme(legend.position="none")
+       
+       # theme(axis.text.x=element_text(angle=20,hjust=1))      
+    
+
+
+
+
+# unique(exp_df$JobFunctionSelect)
+# orig_names <- c("Build prototypes to explore applying machine learning to new areas",                                
+# "Analyze and understand data to influence product or business decisions",                                            
+#   "Research that advances the state of the art of machine learning",                                                   
+#   "Build and/or run the data infrastructure that your business uses for storing, analyzing, and operationalizing data",
+#   "Build and/or run a machine learning service that operationally improves your product or workflows",                 
+#   NA,                                                                                                                  
+#  "Other)
+# 
+# new_names <- 
+# 
+# 
+```
+
+```
+
